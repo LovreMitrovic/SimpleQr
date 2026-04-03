@@ -6,14 +6,17 @@ import {
   TextInput,
   TouchableOpacity,
   useColorScheme,
+  Alert,
 } from 'react-native';
-import { CameraView, useCameraPermissions } from 'expo-camera';
+import { CameraView, useCameraPermissions, scanFromURLAsync } from 'expo-camera';
+import * as ImagePicker from 'expo-image-picker';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 
 export default function ScanScreen() {
   const [scanning, setScanning] = useState(false);
   const [scannedText, setScannedText] = useState('');
   const [permission, requestPermission] = useCameraPermissions();
+  const [mediaPermission, requestMediaPermission] = ImagePicker.useMediaLibraryPermissions();
   const colorScheme = useColorScheme();
   const isDark = colorScheme === 'dark';
 
@@ -28,6 +31,32 @@ export default function ScanScreen() {
   const handleBarCodeScanned = ({ data }: { data: string }) => {
     setScannedText(data);
     setScanning(false);
+  };
+
+  const handleUpload = async () => {
+    if (!mediaPermission?.granted) {
+      const result = await requestMediaPermission();
+      if (!result.granted) {
+        Alert.alert('Permission required', 'Please allow access to your photo library to upload a QR code image.');
+        return;
+      }
+    }
+
+    const pickerResult = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      quality: 1,
+    });
+
+    if (pickerResult.canceled || pickerResult.assets.length === 0) return;
+
+    const uri = pickerResult.assets[0].uri;
+    const results = await scanFromURLAsync(uri, ['qr']);
+
+    if (results.length > 0) {
+      setScannedText(results[0].data);
+    } else {
+      Alert.alert('No QR code found', 'Could not detect a QR code in the selected image.');
+    }
   };
 
   if (scanning) {
@@ -64,7 +93,7 @@ export default function ScanScreen() {
           />
         ) : (
           <Text style={[styles.hint, isDark && styles.hintDark]}>
-            Press the button below to scan a QR code
+            Press a button below to scan or upload a QR code
           </Text>
         )}
       </View>
@@ -76,6 +105,14 @@ export default function ScanScreen() {
         >
           <FontAwesome name="camera" size={22} color="white" style={styles.buttonIcon} />
           <Text style={styles.scanButtonText}>Scan QR Code</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.scanButton, styles.uploadButton]}
+          onPress={handleUpload}
+          accessibilityLabel="Upload QR code from photo library"
+        >
+          <FontAwesome name="image" size={22} color="white" style={styles.buttonIcon} />
+          <Text style={styles.scanButtonText}>Upload from Library</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -124,6 +161,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     padding: 16,
+    gap: 10,
     borderTopWidth: 1,
     borderTopColor: '#e0e0e0',
     backgroundColor: '#fff',
@@ -140,6 +178,9 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     paddingVertical: 14,
     paddingHorizontal: 24,
+  },
+  uploadButton: {
+    backgroundColor: '#34C759',
   },
   buttonIcon: {
     marginRight: 10,

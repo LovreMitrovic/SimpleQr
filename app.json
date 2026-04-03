@@ -36,6 +36,12 @@
         {
           "cameraPermission": "Allow SimpleQr to access your camera for scanning QR codes."
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Allow SimpleQr to access your photo library to scan QR codes from images."
+        }
       ]
     ],
     "experiments": {
